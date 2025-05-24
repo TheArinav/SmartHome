@@ -18,7 +18,7 @@ DFA = {
         "transitions": {
             "Button:2": "turn_on_tv",
             "Remote:Power": "turn_on_ac",
-            "IR_Received:0x1FE48B7": "handle_tv_remote"
+            "IR_Received:0x00FF30CF": "handle_tv_remote"
         }
     },
     "turn_on_tv": {
