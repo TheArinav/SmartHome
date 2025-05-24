@@ -3,7 +3,10 @@
 from PhysicalDriver import (
     perform_action,
     wait_for_button,
-    wait_for_ir_signal
+    wait_for_ir_signal,
+    init_button_matrix,
+    setup_gpio,
+    lcd_init
 )
 
 import time
@@ -105,4 +108,7 @@ def start_dfa_loop():
 
 # Optional entry point
 if __name__ == "__main__":
+    setup_gpio()
+    lcd_init()
+    init_button_matrix()
     start_dfa_loop()
