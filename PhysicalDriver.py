@@ -270,3 +270,9 @@ def wait_for_button(timeout=None):
         return button_event_queue.get(timeout=timeout)
     except:
         return None
+
+def wait_for_ir_signal(timeout=None):
+    try:
+        return ir_input_queue.get(timeout=timeout)
+    except:
+        return None
