@@ -57,20 +57,19 @@ def send_ir_signal(code_hex: str):
         print("[IR_TX] pigpio not connected")
         return
 
-    code = int(code_hex, 16)
+    try:
+        code = int(code_hex, 16)
+    except ValueError:
+        print(f"[IR ERROR] Invalid hex code: {code_hex}")
+        return
+
     print(f"[IR_TX] Sending NEC code: {code_hex}")
 
-    # NEC protocol builder for pigpio
-    marks_spaces = nec_encode(code)  # returns list of (mark, space) durations
-
-    wf = []
-    for mark, space in marks_spaces:
-        wf.append(pigpio.pulse(1 << OUT_PIN_LED_IR, 0, mark))
-        wf.append(pigpio.pulse(0, 1 << OUT_PIN_LED_IR, space))
+    pulses = nec_encode(code)  # ← already returns a list of pigpio.pulse objects
 
     pi.set_mode(OUT_PIN_LED_IR, pigpio.OUTPUT)
     pi.wave_clear()
-    pi.wave_add_generic(wf)
+    pi.wave_add_generic(pulses)
     wid = pi.wave_create()
 
     if wid >= 0:
@@ -78,6 +77,7 @@ def send_ir_signal(code_hex: str):
         while pi.wave_tx_busy():
             time.sleep(0.01)
         pi.wave_delete(wid)
+
 
 
 # --- LED control ---
