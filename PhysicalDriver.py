@@ -264,3 +264,9 @@ def lcd_write(message, line=1):
     message = message.ljust(LCD_WIDTH)
     for char in message:
         lcd_byte(ord(char), 1)
+
+def wait_for_button(timeout=None):
+    try:
+        return button_event_queue.get(timeout=timeout)
+    except:
+        return None
