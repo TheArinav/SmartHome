@@ -219,3 +219,52 @@ def lcd_write(message, line=1):
     message = message.ljust(LCD_WIDTH)
     for char in message:
         lcd_byte(ord(char), 1)
+
+#region BUTTONS
+# --- Button Matrix Scanning ---
+button_layout = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['*', '0', '#']
+]
+
+button_row_pins = [OUT_PIN_BTTN_ROW_1, OUT_PIN_BTTN_ROW_2, OUT_PIN_BTTN_ROW_3, OUT_PIN_BTTN_ROW_4]
+button_col_pins = [IN_PIN_BTTN_COL_1, IN_PIN_BTTN_COL_2, IN_PIN_BTTN_COL_3]
+
+def init_button_matrix():
+    setup_gpio()
+    for row in button_row_pins:
+        GPIO.setup(row, GPIO.OUT)
+        GPIO.output(row, GPIO.LOW)
+
+    for col in button_col_pins:
+        GPIO.setup(col, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+def scan_buttons():
+    """Returns a list of pressed button symbols, or empty list."""
+    pressed = []
+    for row_index, row_pin in enumerate(button_row_pins):
+        GPIO.output(row_pin, GPIO.HIGH)
+        for col_index, col_pin in enumerate(button_col_pins):
+            if GPIO.input(col_pin) == GPIO.HIGH:
+                pressed.append(button_layout[row_index][col_index])
+        GPIO.output(row_pin, GPIO.LOW)
+    return pressed
+
+def wait_for_button(timeout=None):
+    """Blocks until a button is pressed (or timeout in seconds). Returns the symbol."""
+    print("[BTN] Waiting for button press...")
+    init_button_matrix()
+    start = time.time()
+    while True:
+        buttons = scan_buttons()
+        if buttons:
+            print(f"[BTN] Detected: {buttons}")
+            return buttons[0]  # Only return the first for now
+        if timeout and (time.time() - start) > timeout:
+            print("[BTN] Timeout")
+            return None
+        time.sleep(0.05)
+
+#endregion
