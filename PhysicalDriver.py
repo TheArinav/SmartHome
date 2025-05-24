@@ -325,11 +325,10 @@ def wait_for_ir_signal(timeout=5):
 
 def nec_encode(code):
     def pulse(on, length):
-        return pigpio.pulse(
-            1 << OUT_PIN_LED_IR if on else 0,
-            0 if on else 1 << OUT_PIN_LED_IR,
-            length
-        )
+        if on:
+            return pigpio.pulse(1 << OUT_PIN_LED_IR, 0, length)
+        else:
+            return pigpio.pulse(0, 1 << OUT_PIN_LED_IR, length)
 
     sequence = [pulse(True, 9000), pulse(False, 4500)]
     for i in range(32):
