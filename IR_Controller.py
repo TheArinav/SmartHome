@@ -1,13 +1,14 @@
 # IR_Controller.py
 
-from PhysicalDriver import perform_action  # This will execute hardware actions
+from PhysicalDriver import (
+    perform_action,
+    wait_for_button,
+    wait_for_ir_signal
+)
 
-# Supported DFA triggers:
-# - IR_Received:<signal>        e.g., IR_Received:0x1FE48B7
-# - Button:0–9, *, #            e.g., Button:1
-# - Remote:<command-string>     e.g., Remote:PowerOff
+import time
 
-# Example DFA structure (replace with yours or load dynamically)
+# DFA Definition
 DFA = {
     "idle": {
         "on_enter": ["display:Idle", "led:green"],
@@ -37,11 +38,10 @@ DFA = {
     }
 }
 
-# Internal system state
+# Internal state
 current_state = "idle"
 
 def handle_command(event: str) -> str:
-    """Process an input event and perform a DFA state transition if defined."""
     global current_state
     print(f"[DFA] Current state: {current_state} | Event: {event}")
 
@@ -59,14 +59,11 @@ def handle_command(event: str) -> str:
     return f"[DFA] State changed to {current_state}"
 
 def resolve_event_trigger(state_def, event):
-    """Matches an event to the correct transition based on exact or prefix match."""
     transitions = state_def.get("transitions", {})
 
-    # Exact match first
     if event in transitions:
         return transitions[event]
 
-    # Allow prefix wildcard matching (e.g., Remote:* or IR_Received:*)
     for trigger_key in transitions:
         if trigger_key.endswith(":*"):
             prefix = trigger_key[:-2]
@@ -76,7 +73,6 @@ def resolve_event_trigger(state_def, event):
     return None
 
 def execute_state(state_name: str):
-    """Executes all on_enter actions for a given state."""
     state = DFA.get(state_name)
     if not state:
         print(f"[DFA] Invalid state: {state_name}")
@@ -86,3 +82,27 @@ def execute_state(state_name: str):
     print(f"[DFA] Executing {len(actions)} actions for state '{state_name}'")
     for action in actions:
         perform_action(action)
+
+# === Event polling loop ===
+def start_dfa_loop():
+    execute_state(current_state)  # Initialize first state
+    while True:
+        # First check buttons
+        button = wait_for_button(timeout=0.1)
+        if button:
+            trigger = f"Button:{button}"
+            handle_command(trigger)
+            continue
+
+        # Then check IR
+        ir_signal = wait_for_ir_signal(timeout=0.1)
+        if ir_signal:
+            trigger = f"IR_Received:{ir_signal}"
+            handle_command(trigger)
+
+        # Add a small sleep to reduce CPU usage
+        time.sleep(0.05)
+
+# Optional entry point
+if __name__ == "__main__":
+    start_dfa_loop()
