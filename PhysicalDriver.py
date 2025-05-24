@@ -48,13 +48,53 @@ def setup_gpio():
     gpio_mode_set = True
     print("[GPIO] Initialized")
 
-# --- IR signal sending (placeholder using irsend) ---
-def send_ir_signal(code: str):
-    print(f"[IR] Sending IR code: {code}")
+# --- IR signal sending  ---
+def send_ir_signal(hex_code: str):
+    """
+    Send a full 32-bit NEC IR signal via PWM using a raw IR LED on GPIO 16.
+    """
+    setup_gpio()
+
     try:
-        subprocess.run(["irsend", "SEND_ONCE", "custom_remote", code], check=True)
-    except Exception as e:
-        print(f"[IR ERROR] Failed to send code {code}: {e}")
+        code = int(hex_code, 16)
+    except ValueError:
+        print(f"[IR ERROR] Invalid hex code: {hex_code}")
+        return
+
+    def pulse(duration_us):
+        ir_pwm.start(50)  # 50% duty cycle @ 38kHz
+        time.sleep(duration_us / 1_000_000)
+        ir_pwm.stop()
+        GPIO.output(OUT_PIN_LED_IR, GPIO.LOW)
+
+    def space(duration_us):
+        ir_pwm.stop()
+        GPIO.output(OUT_PIN_LED_IR, GPIO.LOW)
+        time.sleep(duration_us / 1_000_000)
+
+    ir_pwm = GPIO.PWM(OUT_PIN_LED_IR, 38000)
+
+    print(f"[IR] Sending NEC IR code: {hex_code} ({code:032b})")
+
+    # --- START pulse ---
+    pulse(9000)
+    space(4500)
+
+    # --- 32 data bits (MSB first) ---
+    for i in range(32):
+        bit = (code >> (31 - i)) & 1
+        pulse(560)
+        if bit == 1:
+            space(1690)
+        else:
+            space(560)
+
+    # --- STOP bit ---
+    pulse(560)
+
+    ir_pwm.stop()
+    GPIO.output(OUT_PIN_LED_IR, GPIO.LOW)
+    time.sleep(0.05)  # small pause to ensure completion
 
 # --- LED control ---
 def set_led(color: str):
