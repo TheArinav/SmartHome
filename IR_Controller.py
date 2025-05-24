@@ -34,7 +34,7 @@ DFA = {
         }
     },
     "handle_tv_remote": {
-        "on_enter": ["display:Remote Control", "led:orange"],
+        "on_enter": ["display:Remote Control", "led:yellow"],
         "transitions": {
             "Button:0": "idle"
         }
