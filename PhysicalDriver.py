@@ -259,36 +259,68 @@ def init_ir_receiver():
     print("[IR_RX] Ready")
 
 def wait_for_ir_signal(timeout=5):
-    """Waits for an NEC IR code via pigpio. Returns a hex string."""
     if not pi.connected:
-        print("[IR_RX] Failed to connect to pigpio")
+        print("[IR_RX] pigpio not connected.")
         return None
 
-    got_code = []
+    print("[IR_RX] Waiting for IR signal...")
 
-    def ir_callback(gpio, level, tick):
-        nonlocal got_code
-        code, bits = pi.get_ir_code()
-        if bits == 32:
-            got_code = code
+    pulses = []
 
-    # NEC decoder provided by pigpio (as callback)
-    pi.set_mode(IR_RECEIVER_GPIO, pigpio.INPUT)
-    cb = pi.callback(IR_RECEIVER_GPIO, pigpio.FALLING_EDGE, ir_callback)
+    def cb_func(gpio, level, tick):
+        nonlocal pulses
+        if len(pulses) >= 1000:
+            return
+        pulses.append((level, tick))
 
-    print("[IR_RX] Waiting for IR signal (NEC)...")
+    cb = pi.callback(IR_RECEIVER_GPIO, pigpio.EITHER_EDGE, cb_func)
+
     start = time.time()
     while time.time() - start < timeout:
-        if got_code:
-            cb.cancel()
-            hex_str = f"0x{got_code[0]:08X}"
-            print(f"[IR_RX] NEC code received: {hex_str}")
-            return hex_str
         time.sleep(0.01)
 
     cb.cancel()
-    print("[IR_RX] Timeout waiting for IR code.")
-    return None
+
+    if len(pulses) < 2:
+        print("[IR_RX] No IR pulses detected.")
+        return None
+
+    # Convert pulse edges to timing
+    durations = []
+    for i in range(1, len(pulses)):
+        level = pulses[i - 1][0]
+        delta = pigpio.tickDiff(pulses[i - 1][1], pulses[i][1])
+        durations.append((level, delta))
+
+    # NEC decoding
+    bits = []
+    i = 0
+
+    # Skip header: 9ms LOW, 4.5ms HIGH
+    while i < len(durations) and durations[i][1] < 8500:
+        i += 1
+    i += 2  # Skip start bits
+
+    while i + 1 < len(durations) and len(bits) < 32:
+        mark = durations[i][1]
+        space = durations[i + 1][1]
+        if 400 <= mark <= 700:
+            if 400 <= space <= 700:
+                bits.append("0")
+            elif 1500 <= space <= 1800:
+                bits.append("1")
+            else:
+                break
+        i += 2
+
+    if len(bits) != 32:
+        print("[IR_RX] Incomplete IR code received.")
+        return None
+
+    bit_string = "".join(bits)
+    value = int(bit_string, 2)
+    print(f"[IR_RX] NEC code received: 0x{value:08X}")
+    return f"0x{value:08X}"
 
 
 def nec_encode(code):
