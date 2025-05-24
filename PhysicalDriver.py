@@ -275,21 +275,54 @@ def init_ir_receiver():
     print("[IR_RX] Ready")
 
 def wait_for_ir_signal(timeout=None):
-    """Blocks until IR signal is received or timeout. Returns placeholder IR string."""
-    init_ir_receiver()
-    print("[IR_RX] Waiting for signal...")
+    setup_gpio()
+    GPIO.setup(IN_PIN_IR, GPIO.IN)
+    print("[IR_RX] Waiting for IR signal...")
 
     start_time = time.time()
-
-    while True:
-        if GPIO.input(IN_PIN_IR) == GPIO.LOW:
-            # Placeholder: real decoding should replace this
-            print("[IR_RX] Signal detected!")
-            time.sleep(0.2)  # debounce delay
-            return "0xDEADBEEF"  # placeholder IR code
+    while GPIO.input(IN_PIN_IR) == GPIO.HIGH:
         if timeout and (time.time() - start_time) > timeout:
-            print("[IR_RX] Timeout")
             return None
-        time.sleep(0.01)
+        time.sleep(0.001)
+
+    def wait_for_edge(expected, timeout_us=100000):
+        t_start = time.time_ns()
+        while GPIO.input(IN_PIN_IR) != expected:
+            if (time.time_ns() - t_start) > timeout_us * 1000:
+                return None
+        t_edge = time.time_ns()
+        while GPIO.input(IN_PIN_IR) == expected:
+            if (time.time_ns() - t_edge) > timeout_us * 1000:
+                return None
+        return (time.time_ns() - t_edge) / 1000  # duration in μs
+
+    # Start pulse (~9ms)
+    if wait_for_edge(0) is None: return None
+    start_pulse = wait_for_edge(1)
+    if not (8500 <= start_pulse <= 9500):
+        return None
+
+    # Space after start (~4.5ms)
+    space_pulse = wait_for_edge(0)
+    if not (4000 <= space_pulse <= 5000):
+        return None
+
+    bits = []
+    for _ in range(32):
+        if wait_for_edge(1) is None: return None
+        space = wait_for_edge(0)
+        if space is None: return None
+        if 400 <= space <= 700:
+            bits.append("0")
+        elif 1500 <= space <= 1800:
+            bits.append("1")
+        else:
+            return None
+
+    bit_str = "".join(bits)
+    value = int(bit_str, 2)
+    print(f"[IR_RX] Decoded NEC code: 0x{value:08X}")
+    return f"0x{value:08X}"
+
 
 #endregion

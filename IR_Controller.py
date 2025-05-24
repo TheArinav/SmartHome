@@ -16,7 +16,7 @@ DFA = {
     "idle": {
         "on_enter": ["display:Idle", "led:green"],
         "transitions": {
-            "Button:1": "turn_on_tv",
+            "Button:2": "turn_on_tv",
             "Remote:Power": "turn_on_ac",
             "IR_Received:0x1FE48B7": "handle_tv_remote"
         }
