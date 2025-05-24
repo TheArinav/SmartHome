@@ -88,6 +88,24 @@ def execute_state(state_name: str):
 
 # === Event polling loop ===
 def start_dfa_loop():
+    from threading import Thread
+    from PhysicalDriver import (
+        perform_action,
+        wait_for_button,
+        wait_for_ir_signal,
+        init_button_matrix,
+        setup_gpio,
+        lcd_init,
+        send_ir_thread,
+        receive_ir_thread,
+        button_scan_thread
+    )
+
+    # Start background threads
+    Thread(target=send_ir_thread, daemon=True).start()
+    Thread(target=receive_ir_thread, daemon=True).start()
+    Thread(target=button_scan_thread, daemon=True).start()
+
     execute_state(current_state)  # Initialize first state
     while True:
         # First check buttons
