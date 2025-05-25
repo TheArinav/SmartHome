@@ -49,38 +49,19 @@ DFA = {
 
 current_state = "idle"
 
-import json
-
-def handle_command(message: str) -> str:
-    global current_state, DFA
-
-    if message.startswith("Remote:"):
-        event = message
-        print(f"[DFA] Current state: {current_state} | Event: {event}")
-        state_def = DFA.get(current_state)
-        if not state_def:
-            return f"[ERROR] Undefined state: {current_state}"
-        next_state = resolve_event_trigger(state_def, event)
-        if not next_state:
-            return f"[DFA] No transition for event '{event}' in state '{current_state}'"
-        print(f"[DFA] Transition: {current_state} → {next_state}")
-        current_state = next_state
-        execute_state(current_state)
-        return f"[DFA] State changed to {current_state}"
-
-    else:
-        try:
-            new_dfa = json.loads(message)
-            if not isinstance(new_dfa, dict):
-                return "[ERROR] Parsed DFA is not a dictionary."
-            DFA = new_dfa
-            current_state = list(DFA.keys())[0]  # Use the first key as initial state
-            print("[DFA] New DFA loaded.")
-            execute_state(current_state)
-            return f"[DFA] New DFA loaded. Initial state: {current_state}"
-        except Exception as e:
-            return f"[ERROR] Failed to load DFA: {e}"
-
+def handle_command(event: str) -> str:
+    global current_state
+    print(f"[DFA] Current state: {current_state} | Event: {event}")
+    state_def = DFA.get(current_state)
+    if not state_def:
+        return f"[ERROR] Undefined state: {current_state}"
+    next_state = resolve_event_trigger(state_def, event)
+    if not next_state:
+        return f"[DFA] No transition for event '{event}' in state '{current_state}'"
+    print(f"[DFA] Transition: {current_state} → {next_state}")
+    current_state = next_state
+    execute_state(current_state)
+    return f"[DFA] State changed to {current_state}"
 
 def resolve_event_trigger(state_def, event):
     transitions = state_def.get("transitions", {})
