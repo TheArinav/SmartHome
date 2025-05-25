@@ -27,19 +27,22 @@ DFA = {
     "turn_on_tv": {
         "on_enter": ["ir:0xAABBCCDD", "display:TV ON", "led:blue", "buzzer:short"],
         "transitions": {
-            "Button:#": "idle"
+            "Button:#": "idle",
+            "Remote:Back" : "idle"
         }
     },
     "turn_on_ac": {
         "on_enter": ["ir:0x11223344", "display:AC ON", "led:orange", "buzzer:short"],
         "transitions": {
-            "Button:*": "idle"
+            "Button:3": "idle",
+            "Remote:Back": "idle"
         }
     },
     "handle_tv_remote": {
         "on_enter": ["display:Remote Control", "led:yellow"],
         "transitions": {
-            "Button:0": "idle"
+            "Button:0": "idle",
+            "Remote:Back" : "idle"
         }
     }
 }
