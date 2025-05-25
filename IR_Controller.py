@@ -49,19 +49,38 @@ DFA = {
 
 current_state = "idle"
 
-def handle_command(event: str) -> str:
-    global current_state
-    print(f"[DFA] Current state: {current_state} | Event: {event}")
-    state_def = DFA.get(current_state)
-    if not state_def:
-        return f"[ERROR] Undefined state: {current_state}"
-    next_state = resolve_event_trigger(state_def, event)
-    if not next_state:
-        return f"[DFA] No transition for event '{event}' in state '{current_state}'"
-    print(f"[DFA] Transition: {current_state} → {next_state}")
-    current_state = next_state
-    execute_state(current_state)
-    return f"[DFA] State changed to {current_state}"
+def handle_command(message: str) -> str:
+    global current_state, DFA
+
+    # Try DFA transition first (for any valid trigger)
+    if any(message.startswith(prefix) for prefix in ["Remote:", "Button:", "IR_Received:"]):
+        event = message
+        print(f"[DFA] Current state: {current_state} | Event: {event}")
+        state_def = DFA.get(current_state)
+        if not state_def:
+            return f"[ERROR] Undefined state: {current_state}"
+        next_state = resolve_event_trigger(state_def, event)
+        if not next_state:
+            return f"[DFA] No transition for event '{event}' in state '{current_state}'"
+        print(f"[DFA] Transition: {current_state} → {next_state}")
+        current_state = next_state
+        execute_state(current_state)
+        return f"[DFA] State changed to {current_state}"
+
+    # Otherwise try parsing it as a DFA definition
+    else:
+        try:
+            new_dfa = json.loads(message)
+            if not isinstance(new_dfa, dict):
+                return "[ERROR] Parsed DFA is not a dictionary."
+            DFA = new_dfa
+            current_state = list(DFA.keys())[0]  # Use first key as initial state
+            print("[DFA] New DFA loaded.")
+            execute_state(current_state)
+            return f"[DFA] New DFA loaded. Initial state: {current_state}"
+        except Exception as e:
+            return f"[ERROR] Failed to load DFA: {e}"
+
 
 def resolve_event_trigger(state_def, event):
     transitions = state_def.get("transitions", {})
